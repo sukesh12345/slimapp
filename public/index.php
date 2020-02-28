@@ -1,4 +1,7 @@
 <?php
+header ("Access-Control-Allow-Origin:*");
+header ("Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS");
+header ("Access-Control-Allow-Headers: origin, x-requested-with, content-type, authorization");
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use \Firebase\JWT\JWT ; 
@@ -78,7 +81,7 @@ $app->add(new Tuupola\Middleware\JwtAuthentication([
 //login 
 
 
-    $app->post('/login', function(Request $request, Response $response)
+    $app->post('/api/users', function(Request $request, Response $response)
 {
     $jwt = new config\jwt();
     $dbobj = new dbconnect\dbconnection();
@@ -123,12 +126,26 @@ $app->add(new Tuupola\Middleware\JwtAuthentication([
 
 
 //delete
-$app->delete('/delete/{Id}', function(Request $request, Response $response, array $args) 
+$app->delete('/api/users/{Id}', function(Request $request, Response $response, array $args) 
 {   
+
     $id = $args['Id'];
     $dbobj = new dbconnect\dbconnection();
     $conn = $dbobj->connect();
     $conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true); 
+    $jwt = new config\jwt();
+    //$vars = json_decode($request->getBody());
+    if( $request->hasHeader("Authorization") == false) {
+        $newresponse = $response->withStatus(400);
+        return $newresponse->withJson(["message"=>"required jwt token is not recieved"]);
+    }
+    $header = $request->getHeader("Authorization");
+    $vars =$header[0];
+    $token = json_decode($jwt->jwttokendecryption($vars));
+    if( $token->verification == "failed") {
+        $newresponse = $response->withStatus(401);
+        return $newresponse->withJson(["message"=>"you are not authorized"]);
+    } 
     // $vars = json_decode($request->getBody());
     // $Telephone = $vars->Telephone;   
     $sql = "DELETE FROM registration_data WHERE Id = $id";
@@ -146,21 +163,21 @@ $app->delete('/delete/{Id}', function(Request $request, Response $response, arra
 
 
 //Update
-$app->put('/update/{Id}', function(Request $request, Response $response,array $args) 
+$app->put('/api/users/', function(Request $request, Response $response,array $args) 
         {  
             $jwt = new config\jwt();
             $vars = json_decode($request->getBody());
-            if( $request->hasHeader("Authorization") == false) {
-                $newresponse = $response->withStatus(400);
-                return $newresponse->withJson(["message"=>"required jwt token is not recieved"]);
-            }
-            $header = $request->getHeader("Authorization");
-            $vars =$header[0];
-            $token = json_decode($jwt->jwttokendecryption($vars));
-            if( $token->verification == "failed") {
-                $newresponse = $response->withStatus(401);
-                return $newresponse->withJson(["message"=>"you are not authorized"]);
-            } 
+            // if( $request->hasHeader("Authorization") == false) {
+            //     $newresponse = $response->withStatus(400);
+            //     return $newresponse->withJson(["message"=>"required jwt token is not recieved"]);
+            // }
+            // $header = $request->getHeader("Authorization");
+            // $vars =$header[0];
+            // $token = json_decode($jwt->jwttokendecryption($vars));
+            // if( $token->verification == "failed") {
+            //     $newresponse = $response->withStatus(401);
+            //     return $newresponse->withJson(["message"=>"you are not authorized"]);
+            // } 
             $dbobj = new dbconnect\dbconnection();
             $conn = $dbobj->connect();
             $conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
@@ -169,10 +186,11 @@ $app->put('/update/{Id}', function(Request $request, Response $response,array $a
             foreach($vars as $key) {
                 $count++;
             }
-            if( $count != 5) {
+            if( $count != 6) {
                 $newresponse = $response->withStatus(400);
                 return $newresponse->withJson(["message"=>"request body is not appropriate"]);
-            }            
+            }   
+            $Id = $vars->Id;         
             $Name = $vars->Name;
             $Address = $vars->Address;
             $Email = $vars->Email;
@@ -180,8 +198,8 @@ $app->put('/update/{Id}', function(Request $request, Response $response,array $a
             //$Telephone = $vars->Telephone;
             $gender = $vars->gender;
             $Course = $vars->Course;   
-            $Id = $args['Id'];
-           $stmt = $conn->prepare(" UPDATE registration_data SET Name=:Name,Address=:Address,Email=:Email,  Password='12345678',Gender=:Gender,Course=:Course  WHERE Id = $Id");
+            // $Id = $args['Id'];
+           $stmt = $conn->prepare(" UPDATE registration_data SET Name=:Name,Address=:Address,Email=:Email,Gender=:Gender,Course=:Course  WHERE Id = $Id");
            $stmt->bindParam(':Name', $Name);
             $stmt->bindParam(':Address',$Address);
             $stmt->bindParam(':Email',$Email);
@@ -211,20 +229,20 @@ $app->put('/update/{Id}', function(Request $request, Response $response,array $a
 $app->get('/api/users/{Id}', function(Request $request, Response $response, array $args)
 { 
 
-    $jwt = new config\jwt();
+    // $jwt = new config\jwt();
             
-            if( $request->hasHeader("Authorization") == false) {
-                $newresponse = $response->withStatus(400);
-                return $newresponse->withJson(["message"=>"required jwt token is not recieved"]);
-            }
-            $header = $request->getHeader("Authorization");
-            $vars = $header[0];
-            $token = json_decode($jwt->jwttokendecryption($vars));
-            if( $token->verification == "failed") {
-                // header("location: index.html");
-                $newresponse = $response->withStatus(401);
-                return $newresponse->withJson(["message"=>"you are not authorized"]);
-            }
+    //         if( $request->hasHeader("Authorization") == false) {
+    //             $newresponse = $response->withStatus(400);
+    //             return $newresponse->withJson(["message"=>"required jwt token is not recieved"]);
+    //         }
+    //         $header = $request->getHeader("Authorization");
+    //         $vars = $header[0];
+    //         $token = json_decode($jwt->jwttokendecryption($vars));
+    //         if( $token->verification == "failed") {
+    //             // header("location: index.html");
+    //             $newresponse = $response->withStatus(401);
+    //             return $newresponse->withJson(["message"=>"you are not authorized"]);
+    //         }
 
 
     $Id = $args['Id'];

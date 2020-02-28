@@ -266,7 +266,7 @@ $dashboard = function () {
     //console.log(datum);
     $.ajax({
         method: "POST",
-        url: "../../../slimapp/public/index.php/login",
+        url: "../../../slimapp/public/index.php/api/users",
         data: datum
     }).done(function (result) {
         console.log("hi");

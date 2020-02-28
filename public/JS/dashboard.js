@@ -61,7 +61,7 @@ $delete = function () {
     // console.log(datum);
     $.ajax({
         method: "DELETE",
-        url: "../../../slimapp/public/index.php/delete/"+Id,
+        url: "../../../slimapp/public/index.php/api/users/"+Id,
        // data :id
     }).done(function (result) {
         console.log(result);
@@ -112,7 +112,7 @@ $save_data = function () {
         console.log(token)
     $.ajax({
         method: "PUT",
-        url: "../../../slimapp/public/index.php/update/"+Id,
+        url: "../../../slimapp/public/index.php/api/users/"+Id,
         data: datum,
         headers: {"Authorization": token}
     })

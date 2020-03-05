@@ -19,60 +19,47 @@ $c = new \Slim\Container($configuration);
 $app = new \Slim\App($c);
 $app->add(new Tuupola\Middleware\JwtAuthentication([
     "path"=>["/slimapp/public"],
-    "ignore"=>["/slimapp/public/index.php/login"],
+    "ignore"=>["/slimapp/public/fmapi.php/login"],
     "secret" => "secret"
 ]));
 
 //register 
     $app->post('/register', function(Request $request, Response $response)
         {
-            $dbobj = new dbconnect\dbconnection();   
+            $dbobj = new dbconnection\dbconnection();   
             $conn = $dbobj->connect();
-            $conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
+            // $conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
             $vars = json_decode($request->getBody());
             $count = 0;            
             foreach($vars as $key) {
                 $count++;
             }
-            if( $count != 9) {
+            if( $count != 7) {
                 $newresponse = $response->withStatus(400);
                 return $newresponse->withJson(["message"=>"request body is not appropriate","count"=>$count]);
             }
-            $Name = $vars->Name;
-            $Address = $vars->Address;
-            $Email = $vars->Email;
-            $Password = $vars->Password;
-            $Telephone = $vars->Telephone;
-            $gender = $vars->gender;
-            $Course = $vars->Course;   
-            $stmt = $conn->prepare("INSERT INTO registration_data(Name ,Address,Email, Password,Telephone,Gender,Course)
-            VALUES (:Name,:Address,:Email,  :Password,:Telephone,:Gender,:Course )"); 
-            $stmt->bindParam(':Name', $Name);
-            $stmt->bindParam(':Address',$Address);
-            $stmt->bindParam(':Email',$Email);
-            $stmt->bindParam(':Password', $Password);
-            $stmt->bindParam(':Telephone', $Telephone);
-            $stmt->bindParam(':Gender',$gender);
-            $stmt->bindParam(':Course',$Course);
-            $stu_sic = 0;
-            $stmt->execute();
-            if ($stmt->rowCount() == 1) {
-                $resstmt = $conn->prepare("SELECT * FROM registration_data WHERE Telephone = :Telephone");
-                $resstmt->bindParam(':Telephone', $Telephone);
-                $res = $resstmt->execute();
-                // $sicresult = $sicstmt->fetch(PDO::FETCH_ASSOC);
-                // $stu_sic = $sicresult["Telephone"];
-                // return $response->withJson(['status'=>true]);
-                $res = $resstmt->fetch(PDO::FETCH_ASSOC);
-                $status = $res['Id'];
-                $jwt = new config\jwt();
-                $token = $jwt->jwttokenencryption( $status);
-                $value = $jwt->jwttokendecryption($token);
-                return $response->withJson(["status"=>true, "data"=>$value, "token"=>$token]);
-            } else {
+             
+            $values = array( "Name" =>$request->getParsedBody()['Name'],
+                "Address" => $request->getParsedBody()['Address'],
+                "Email" => $request->getParsedBody()['Email'],
+                "Password" =>$request->getParsedBody()['Password'],
+                "Telephone" => $request->getParsedBody()['Telephone'],
+                "Age" => "21",
+                "Gender" => $request->getParsedBody()['gender'],
+                "Course" => $request->getParsedBody()['Course']
+            );
+            $stmt = $conn->createRecord('users', $values);
+            $result = $stmt->commit();
+            if (FileMaker::isError($result)) {
+                $findError = 'Find Error: '. $result->getMessage(). ' (' . $result->code. ')';
                 $newresponse = $response->withStatus(404);
-                return $newresponse->withJson(['status'=>false, "stmt"=>$stmt]);
-            }   
+                return $newresponse->withJson(['success'=>false, "message"=>$findError]);
+                
+            }
+            else{
+                $newresponse = $response->withStatus(200);
+                return $newresponse->withJson(['success'=>true, "message"=>$Telephone]);
+            }
         });
 
     
@@ -85,24 +72,18 @@ $app->add(new Tuupola\Middleware\JwtAuthentication([
 {
     $dbobj = new dbconnection\dbconnection();
     $fm = $dbobj->connect();
-
-
-    
-    // print_r($result);
     $jwt = new config\jwt();
-    // $dbobj = new dbconnect\dbconnection();
-    // $conn = $dbobj->connect();
     $vars = json_decode($request->getBody());
-    if( array_key_exists('login_Name', $vars) == false || $vars->login_Name == null) {
+    if( $request->getParsedBody()['login_Name'] == null) {
         $newresponse = $response->withStatus(401);
         return $newresponse->withJson(['status'=>false, 'message'=>'username is required ']);
     }
-    if( array_key_exists('login_Password', $vars) == false || $vars->login_Password == null) {
+    if( $request->getParsedBody()['login_Password'] == null) {
         $newresponse = $response->withStatus(401);
         return $newresponse->withJson(['status'=>false, 'message'=>'password is required']);
     }
-    $phone = $vars->login_Name;
-    $password = $vars->login_Password;
+    $phone = $request->getParsedBody()['login_Name'];
+    $password = $request->getParsedBody()['login_Password'];
     if(preg_match("/^[0-9]\d{9}$/", $phone) == false) {
         $newresponse = $response->withStatus(400);
         return $newresponse->withJson(["status"=>false, "message"=>"username is not valid"]);
@@ -113,58 +94,70 @@ $app->add(new Tuupola\Middleware\JwtAuthentication([
         return $newresponse->withJson(["status"=>false, "message"=>"password is not valid"]);
     } 
     $findCommand = $fm->newFindCommand('users');
-    $findCommand->addFindCriterion('Phone', $phone);
+    $findCommand->addFindCriterion('Telephone', $phone);
     $findCommand->addFindCriterion('Password', $password);
-    $result=$findCommand->execute();    
-    $ph=$result->getRecords()[0]->_impl->_fields['Phone'][0];
+    $result=$findCommand->execute();   
+    if (FileMaker::isError($result)) {
+        if ($result->code = 401) {
+        $findError = 'There are no Records that match that request: '. ' (' .
+        $result->code . ')';
+        } else {
+        $findError = 'Find Error: '. $result->getMessage(). ' (' . $result->code
+        . ')';
+        }
+        $newresponse =  $response->withStatus(404);
+        return $newresponse->withJson(["success"=>false,"message"=>"credentials dosent match each other"]);
+        }  
+    $ph=$result->getRecords()[0]->_impl->_fields['Telephone'][0];
+    $id=$result->getRecords()[0]->_impl->_fields['Id'][0];
     if(count($result->getRecords())==1){
         $token = $jwt->jwttokenencryption( $ph);
-    return $response->withJson(["status"=>true,  "token"=>$token]);
+    return $response->withJson(["status"=>true,"data"=>$id , "token"=>$token]);
     } else {
         $newresponse = $response->withStatus(401);
-        return $newresponse->withJson(["status"=>false, "message"=>"credentials dosent match each other"]);
+        return $newresponse->withJson(["status"=>false, "message"=>"credentials  dosent match each other"]);
     }
-   
-
-    
-    // $stmt = $conn->prepare("SELECT * FROM registration_data WHERE telephone = :phone and password = :password");
-    // $stmt->bindParam(':phone', $phone);
-    // $stmt->bindParam(':password', $password);
-    // $stmt->execute();
-   
-    // $findCommand->addFindCriterion('GPA', $searchValue);
-    // $findCommand->setPreCommandScript('UpdateGPA');
-   
-    // $result = $findCommand->execute(); 
-    // if ($stmt->rowCount() == 1) {
-    //     $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    //     $status = $result['Id'];
-    //     $token = $jwt->jwttokenencryption( $status);
-    //     $value = $jwt->jwttokendecryption($token);
-    //     return $response->withJson(["status"=>true, "data"=>$value, "token"=>$token]);
-    // } else {
-    //     $newresponse = $response->withStatus(401);
-    //     return $newresponse->withJson(["status"=>false, "message"=>"credentials dosent match each other"]);
-    // }
 });
 
 
 //delete
 $app->delete('/api/users/{Id}', function(Request $request, Response $response, array $args) 
 {   
-    $id = $args['Id'];
-    $dbobj = new dbconnect\dbconnection();
-    $conn = $dbobj->connect();
-    $conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true); 
-    // $vars = json_decode($request->getBody());
-    // $Telephone = $vars->Telephone;   
-    $sql = "DELETE FROM registration_data WHERE Id = $id";
-    $stmt = $conn->prepare($sql);
-    //$stmt->bindParam(':Telephone', $Telephone);
-    $stmt->execute();
-    if ($stmt->rowCount() == 1) {
+    // $rec_ID = $args['Id'];
+    $dbobj = new dbconnection\dbconnection();
+    $fm = $dbobj->connect();
+    $jwt = new config\jwt();
+    if( $request->hasHeader("Authorization") == false) {
+        $newresponse = $response->withStatus(400);
+        return $newresponse->withJson(["message"=>"required jwt token is not recieved"]);
+    }
+    $header = $request->getHeader("Authorization");
+    $vars =$header[0];
+    $token = json_decode($jwt->jwttokendecryption($vars));
+    if( $token->verification == "failed") {
+        $newresponse = $response->withStatus(401);
+        return $newresponse->withJson(["message"=>"you are not authorized"]);
+    } 
+    $rec_ID = json_decode($jwt->jwttokendecryption($vars))->status;
+    $findCommand = $fm->newFindCommand('users');
+    $findCommand->addFindCriterion('Telephone', $rec_ID);
+    $result=$findCommand->execute(); 
+    if (FileMaker::isError($result)) {
+        if ($result->code = 401) {
+        $findError = 'There are no Records that match that request: '. ' (' .
+        $result->code . ')';
+        } else {
+        $findError = 'Find Error: '. $result->getMessage(). ' (' . $result->code
+        . ')';
+        }
+        $newresponse =  $response->withStatus(404);
+        return $newresponse->withJson(["success"=>false]);
+        }   
+    $ph=$result->getRecords()[0];
+    $ph->delete();
+    if(count($result->getRecords())==1){
         $newresponse = $response->withStatus(200);
-        return $newresponse->withJson(['success'=>true]);
+        return $newresponse->withJson(['success'=>true,'message'=>'record deleted successfully']);
     } else {
         $newresponse =  $response->withStatus(404);
         return $newresponse->withJson(["success"=>false]);
@@ -173,7 +166,7 @@ $app->delete('/api/users/{Id}', function(Request $request, Response $response, a
 
 
 //Update
-$app->put('/api/users/', function(Request $request, Response $response,array $args) 
+$app->put('/api/users/{id}', function(Request $request, Response $response,array $args) 
         {  
             $jwt = new config\jwt();
             $vars = json_decode($request->getBody());
@@ -188,9 +181,9 @@ $app->put('/api/users/', function(Request $request, Response $response,array $ar
                 $newresponse = $response->withStatus(401);
                 return $newresponse->withJson(["message"=>"you are not authorized"]);
             } 
-            $dbobj = new dbconnect\dbconnection();
-            $conn = $dbobj->connect();
-            $conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
+            $fm = new dbconnection\dbconnection();
+            $fm = $fm->connect();
+            // $conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
             $vars = json_decode($request->getBody());
             $count = 0;
             foreach($vars as $key) {
@@ -204,39 +197,22 @@ $app->put('/api/users/', function(Request $request, Response $response,array $ar
             $Name = $vars->Name;
             $Address = $vars->Address;
             $Email = $vars->Email;
-            //$Password = $vars->Password;
-            //$Telephone = $vars->Telephone;
             $gender = $vars->gender;
             $Course = $vars->Course;   
-            // $Id = $args['Id'];
-           $stmt = $conn->prepare(" UPDATE registration_data SET Name=:Name,Address=:Address,Email=:Email,Gender=:Gender,Course=:Course  WHERE Id = $Id");
-           $stmt->bindParam(':Name', $Name);
-            $stmt->bindParam(':Address',$Address);
-            $stmt->bindParam(':Email',$Email);
-            //$stmt->bindParam(':Password', $Password);
-           // $stmt->bindParam(':Telephone', $Telephone);
-            $stmt->bindParam(':Gender',$gender);
-            $stmt->bindParam(':Course',$Course);
-           $query = $conn->prepare("SELECT * from registration_data WHERE Telephone = '9494781860'");
-           //$query->bindParam(':Telephone', $Telephone);
-         // if($query->rowCount()==1){
-            if ($stmt->execute() and $stmt->rowCount() == 1) {
-                $newresponse = $response->withStatus(200);
-                return $newresponse->withJson(['success'=>true, "message"=>'record is successfully updated']);
-            }
-            else {
-                $newresponse = $response->withStatus(401);
-                return $newresponse->withJson(['success'=>false, "message"=>"record with this phone doesnot exists"]);
-            }
-        //}
-        // else {
-        //     $newresponse = $response->withJson(['success'=>false, "message"=>"record with this phone doesnot exists"]);
-        //     return $newresponse;
-        // }
+            $findCommand = $fm->newFindCommand('users');
+            $findCommand->addFindCriterion('Id', $Id);
+            $result=$findCommand->execute(); 
+            $findCommand=$result->getRecords()[0];
+            $findCommand->setField('Name', $Name);
+            $findCommand->setField('Email', $Email);
+            $findCommand->setField('Address', $Address);
+            $findCommand->setField('Gender', $gender);
+            $findCommand->setField('Course', $Course);
+            $result = $findCommand->commit();
 });
         
 //view a record
-$app->get('/api/users/{Id}', function(Request $request, Response $response, array $args)
+$app->get('/api/users/{id}', function(Request $request, Response $response, array $args)
 { 
 
     $jwt = new config\jwt();
@@ -253,24 +229,31 @@ $app->get('/api/users/{Id}', function(Request $request, Response $response, arra
                 $newresponse = $response->withStatus(401);
                 return $newresponse->withJson(["message"=>"you are not authorized"]);
             }
-
-
-    $Id = $args['Id'];
-    if (preg_match("/^\d+$/",$Id) == false) {
-        $newresponse = $response->withStatus(400);
-        return $newresponse->withJson(["success"=>false, 'message'=>'id must be a number']);
-    }
-    $dbobj = new dbconnect\dbconnection();
-    $conn = $dbobj->connect();
-    $conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
-    $stmt = $conn->prepare("SELECT * FROM registration_data WHERE Id = $Id");
-    $stmt->execute();    
-    if ($stmt->rowCount() == 1) {  
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);  
-        return $response->withJson(['status'=>200, 'result'=>$result]);
+    $Id = $args['id'];
+    $dbobj = new dbconnection\dbconnection();
+    $fm = $dbobj->connect();
+    $findCommand = $fm->newFindCommand('users');
+    $findCommand->addFindCriterion('Id', $Id);
+    $result=$findCommand->execute(); 
+    if (FileMaker::isError($result)) {
+        if ($result->code = 401) {
+        $findError = 'There are no Records that match that request: '. ' (' .
+        $result->code . ')';
+        } else {
+        $findError = 'Find Error: '. $result->getMessage(). ' (' . $result->code
+        . ')';
+        }
+        $newresponse =  $response->withStatus(404);
+        return $newresponse->withJson(["success"=>false]);
+        }   
+    $ph=$result->getRecords()[0]->_impl->_fields;
+    if(count($result->getRecords())==1){
+        $newresponse = $response->withStatus(200);
+        //print_r($ph);
+        return $newresponse->withJson(['success'=>true, 'data'=>$ph]);
     } else {
-        $newresponse = $response->withStatus(404);
-        return $newresponse->withJson(['status'=>404, 'message'=>'no records exists with this id']);
-    }       
+        $newresponse =  $response->withStatus(404);
+        return $newresponse->withJson(["success"=>false]);
+    }
 });
 $app->run();

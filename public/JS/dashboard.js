@@ -1,5 +1,4 @@
 $(document).ready(function () {
-
     var Id = localStorage.getItem('Id');
     // console.log(Id);
     // console.log("hi");

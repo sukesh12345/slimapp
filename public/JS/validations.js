@@ -236,21 +236,21 @@ var register = function () {
             url: "../../../slimapp/public/index.php/register",
             data: datum
         }).done(function (result) {
-                response = JSON.parse(result.status);
-                $('#RegForm').trigger("reset");
-                if (response == true) {
-                    $("#register_message").html("Registered Successfully");
-                    console.log(JSON.parse(result.data).status);
-                    localStorage.setItem('Id', JSON.parse(result.data).status);
-                    //console.log(result.token);
-                    localStorage.setItem('token', (result.token));
-                    //var token = localStorage.getItem('token');
-                    //console.log("hi" + token);
-                }
-                if ($("#register_message").html() == "Registered Successfully") {//true must be given to redirect on successful registration
-                    window.location.href = "dashboard.php";
-                }
-            });
+            response = JSON.parse(result.status);
+            $('#RegForm').trigger("reset");
+            if (response == true) {
+                $("#register_message").html("Registered Successfully");
+                console.log(JSON.parse(result.data).status);
+                localStorage.setItem('Id', JSON.parse(result.data).status);
+                //console.log(result.token);
+                localStorage.setItem('token', (result.token));
+                //var token = localStorage.getItem('token');
+                //console.log("hi" + token);
+            }
+            if ($("#register_message").html() == "Registered Successfully") {//true must be given to redirect on successful registration
+                window.location.href = "dashboard.php";
+            }
+        });
     }
 }
 $dashboard = function () {
@@ -262,15 +262,15 @@ $dashboard = function () {
         var value = entry[1];
         result[name] = value;
     }
-    var datum = JSON.stringify(result);
+    var datum = result;
     //console.log(datum);
+
     $.ajax({
         method: "POST",
         url: "../../../slimapp/public/index.php/api/users",
-        data: datum
+        data: datum,
     }).done(function (result) {
-        console.log("hi");
-        console.log(JSON.parse(result.data).status);
+        console.log(result);
         if (result != null) {
             $('#form_login').trigger("reset");
             localStorage.setItem('Id', JSON.parse(result.data).status);
@@ -280,8 +280,10 @@ $dashboard = function () {
             // console.log("locali"+id);
             location = "dashboard.php";
         }
-        else
+        else{
+            console.log("error");
             $("#credential_error_msg").html("Invalid credentials");
+        }
     })
 
 

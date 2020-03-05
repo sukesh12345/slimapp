@@ -19,7 +19,7 @@ $c = new \Slim\Container($configuration);
 $app = new \Slim\App($c);
 $app->add(new Tuupola\Middleware\JwtAuthentication([
     "path"=>["/slimapp/public"],
-    "ignore"=>["/slimapp/public/index.php/login"],
+    "ignore"=>["/slimapp/public/index.php/api/users","/slimapp/public/index.php/register"],
     "secret" => "secret"
 ]));
 
@@ -86,18 +86,15 @@ $app->add(new Tuupola\Middleware\JwtAuthentication([
     $jwt = new config\jwt();
     $dbobj = new dbconnect\dbconnection();
     $conn = $dbobj->connect();
-    $vars = json_decode($request->getBody());
-    if( array_key_exists('login_Name', $vars) == false || $vars->login_Name == null) {
+    //$vars = json_decode($request->getBody());
+    $phone = $request->getParsedBody()['login_Name'];
+    $password = $request->getParsedBody()['login_Password'];
+    echo $phone;
+    echo $password;
+    if($phone == null || $password == null) {
         $newresponse = $response->withStatus(401);
-        return $newresponse->withJson(['status'=>false, 'message'=>'username is required ']);
+        return $newresponse->withJson(['status'=>false, 'message'=>'Request body not appropriate']);
     }
-    if( array_key_exists('login_Password', $vars) == false || $vars->login_Password == null) {
-        $newresponse = $response->withStatus(401);
-        return $newresponse->withJson(['status'=>false, 'message'=>'password is required']);
-    }
-    $phone = $vars->login_Name;
-    $password = $vars->login_Password;
-
     if(preg_match("/^[0-9]\d{9}$/", $phone) == false) {
         $newresponse = $response->withStatus(400);
         return $newresponse->withJson(["status"=>false, "message"=>"username is not valid"]);
@@ -107,8 +104,7 @@ $app->add(new Tuupola\Middleware\JwtAuthentication([
         $newresponse = $response->withStatus(400);
         return $newresponse->withJson(["status"=>false, "message"=>"password is not valid"]);
     } 
-
-    $stmt = $conn->prepare("SELECT * FROM registration_data WHERE telephone = :phone and password = :password");
+    $stmt = $conn->prepare("SELECT * FROM registration_data WHERE Telephone = :phone and Password = :password");
     $stmt->bindParam(':phone', $phone);
     $stmt->bindParam(':password', $password);
     $stmt->execute();
@@ -163,21 +159,21 @@ $app->delete('/api/users/{Id}', function(Request $request, Response $response, a
 
 
 //Update
-$app->put('/api/users/', function(Request $request, Response $response,array $args) 
+$app->put('/api/users/{Id}', function(Request $request, Response $response,array $args) 
         {  
             $jwt = new config\jwt();
             $vars = json_decode($request->getBody());
-            // if( $request->hasHeader("Authorization") == false) {
-            //     $newresponse = $response->withStatus(400);
-            //     return $newresponse->withJson(["message"=>"required jwt token is not recieved"]);
-            // }
-            // $header = $request->getHeader("Authorization");
-            // $vars =$header[0];
-            // $token = json_decode($jwt->jwttokendecryption($vars));
-            // if( $token->verification == "failed") {
-            //     $newresponse = $response->withStatus(401);
-            //     return $newresponse->withJson(["message"=>"you are not authorized"]);
-            // } 
+            if( $request->hasHeader("Authorization") == false) {
+                $newresponse = $response->withStatus(400);
+                return $newresponse->withJson(["message"=>"required jwt token is not recieved"]);
+            }
+            $header = $request->getHeader("Authorization");
+            $vars =$header[0];
+            $token = json_decode($jwt->jwttokendecryption($vars));
+            if( $token->verification == "failed") {
+                $newresponse = $response->withStatus(401);
+                return $newresponse->withJson(["message"=>"you are not authorized"]);
+            } 
             $dbobj = new dbconnect\dbconnection();
             $conn = $dbobj->connect();
             $conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
@@ -186,11 +182,12 @@ $app->put('/api/users/', function(Request $request, Response $response,array $ar
             foreach($vars as $key) {
                 $count++;
             }
-            if( $count != 6) {
+            if( $count != 5) {
                 $newresponse = $response->withStatus(400);
                 return $newresponse->withJson(["message"=>"request body is not appropriate"]);
             }   
-            $Id = $vars->Id;         
+            // $Id = $vars->Id;    
+            $id = $args['Id'];     
             $Name = $vars->Name;
             $Address = $vars->Address;
             $Email = $vars->Email;
@@ -199,7 +196,7 @@ $app->put('/api/users/', function(Request $request, Response $response,array $ar
             $gender = $vars->gender;
             $Course = $vars->Course;   
             // $Id = $args['Id'];
-           $stmt = $conn->prepare(" UPDATE registration_data SET Name=:Name,Address=:Address,Email=:Email,Gender=:Gender,Course=:Course  WHERE Id = $Id");
+           $stmt = $conn->prepare(" UPDATE registration_data SET Name=:Name,Address=:Address,Email=:Email,Gender=:Gender,Course=:Course  WHERE Id = $id");
            $stmt->bindParam(':Name', $Name);
             $stmt->bindParam(':Address',$Address);
             $stmt->bindParam(':Email',$Email);
@@ -207,7 +204,7 @@ $app->put('/api/users/', function(Request $request, Response $response,array $ar
            // $stmt->bindParam(':Telephone', $Telephone);
             $stmt->bindParam(':Gender',$gender);
             $stmt->bindParam(':Course',$Course);
-           $query = $conn->prepare("SELECT * from registration_data WHERE Telephone = '9494781860'");
+           $query = $conn->prepare("SELECT * from registration_data WHERE 'Id' =$id");
            //$query->bindParam(':Telephone', $Telephone);
          // if($query->rowCount()==1){
             if ($stmt->execute() and $stmt->rowCount() == 1) {
@@ -229,20 +226,20 @@ $app->put('/api/users/', function(Request $request, Response $response,array $ar
 $app->get('/api/users/{Id}', function(Request $request, Response $response, array $args)
 { 
 
-    // $jwt = new config\jwt();
+    $jwt = new config\jwt();
             
-    //         if( $request->hasHeader("Authorization") == false) {
-    //             $newresponse = $response->withStatus(400);
-    //             return $newresponse->withJson(["message"=>"required jwt token is not recieved"]);
-    //         }
-    //         $header = $request->getHeader("Authorization");
-    //         $vars = $header[0];
-    //         $token = json_decode($jwt->jwttokendecryption($vars));
-    //         if( $token->verification == "failed") {
-    //             // header("location: index.html");
-    //             $newresponse = $response->withStatus(401);
-    //             return $newresponse->withJson(["message"=>"you are not authorized"]);
-    //         }
+            if( $request->hasHeader("Authorization") == false) {
+                $newresponse = $response->withStatus(400);
+                return $newresponse->withJson(["message"=>"required jwt token is not recieved"]);
+            }
+            $header = $request->getHeader("Authorization");
+            $vars = $header[0];
+            $token = json_decode($jwt->jwttokendecryption($vars));
+            if( $token->verification == "failed") {
+                // header("location: index.html");
+                $newresponse = $response->withStatus(401);
+                return $newresponse->withJson(["message"=>"you are not authorized"]);
+            }
 
 
     $Id = $args['Id'];

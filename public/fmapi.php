@@ -58,7 +58,7 @@ $app->add(new Tuupola\Middleware\JwtAuthentication([
             }
             else{
                 $newresponse = $response->withStatus(200);
-                return $newresponse->withJson(['success'=>true, "message"=>$Telephone]);
+                return $newresponse->withJson(['success'=>true, "message"=>$request->getParsedBody()['Telephone']]);
             }
         });
 

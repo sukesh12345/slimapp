@@ -99,6 +99,7 @@ class ComposerStaticInitbf5b84afc74a6c60bbb9cdf351399088
     );
 
     public static $classMap = array (
+<<<<<<< Updated upstream
         'FileMaker' => __DIR__ . '/../..' . '/src/lib/FileMaker.php',
         'FileMaker_Command' => __DIR__ . '/../..' . '/src/lib/FileMaker/Command.php',
         'FileMaker_Command_Add' => __DIR__ . '/../..' . '/src/lib/FileMaker/Command/Add.php',
@@ -139,6 +140,8 @@ class ComposerStaticInitbf5b84afc74a6c60bbb9cdf351399088
         'FileMaker_Result_Implementation' => __DIR__ . '/../..' . '/src/lib/FileMaker/Implementation/ResultImpl.php',
         'PEAR' => __DIR__ . '/../..' . '/src/lib/FileMaker/PEAR.php',
         'PEAR_Error' => __DIR__ . '/../..' . '/src/lib/FileMaker/PEAR.php',
+=======
+>>>>>>> Stashed changes
         'config\\dbconnection' => __DIR__ . '/../..' . '/src/config/connection.php',
         'config\\jwt' => __DIR__ . '/../..' . '/src/config/jwt.php',
     );

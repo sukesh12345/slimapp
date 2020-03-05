@@ -1,5 +1,9 @@
 <?php
+<<<<<<< Updated upstream
 header ("Access-Control-Allow-Origin:*");
+=======
+header ("Access-Control-Allow-Origin: http://localhost:4200");
+>>>>>>> Stashed changes
 header ("Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS");
 header ("Access-Control-Allow-Headers: origin, x-requested-with, content-type, authorization");
 use Psr\Http\Message\ResponseInterface as Response;
@@ -19,12 +23,12 @@ $c = new \Slim\Container($configuration);
 $app = new \Slim\App($c);
 $app->add(new Tuupola\Middleware\JwtAuthentication([
     "path"=>["/slimapp/public"],
-    "ignore"=>["/slimapp/public/index.php/login"],
+    "ignore"=>["/slimapp/public/index.php/"],
     "secret" => "secret"
 ]));
 
 //register 
-    $app->post('/register', function(Request $request, Response $response)
+    $app->post('/', function(Request $request, Response $response)
         {
             $dbobj = new dbconnect\dbconnection();   
             $conn = $dbobj->connect();
@@ -97,18 +101,17 @@ $app->add(new Tuupola\Middleware\JwtAuthentication([
     }
     $phone = $vars->login_Name;
     $password = $vars->login_Password;
-
     if(preg_match("/^[0-9]\d{9}$/", $phone) == false) {
         $newresponse = $response->withStatus(400);
         return $newresponse->withJson(["status"=>false, "message"=>"username is not valid"]);
     }
-    //( preg_match("/(?=[a-z])/", $password) == false) or ( preg_match("/(?=[A-Z])/", $password) == false) or ( preg_match("/(?=[0-9])/", $password) == false) or 
+    // ( preg_match("/(?=[a-z])/", $password) == false) or ( preg_match("/(?=[A-Z])/", $password) == false) or ( preg_match("/(?=[0-9])/", $password) == false) or 
     if(( strlen($password) < 8)) {
         $newresponse = $response->withStatus(400);
         return $newresponse->withJson(["status"=>false, "message"=>"password is not valid"]);
     } 
 
-    $stmt = $conn->prepare("SELECT * FROM registration_data WHERE telephone = :phone and password = :password");
+    $stmt = $conn->prepare("SELECT * FROM registration_data WHERE telephone = :phone and password= :password");
     $stmt->bindParam(':phone', $phone);
     $stmt->bindParam(':password', $password);
     $stmt->execute();
@@ -163,7 +166,11 @@ $app->delete('/api/users/{Id}', function(Request $request, Response $response, a
 
 
 //Update
+<<<<<<< Updated upstream
 $app->put('/api/users/', function(Request $request, Response $response,array $args) 
+=======
+$app->put('/api/users/{Id}', function(Request $request, Response $response,array $args) 
+>>>>>>> Stashed changes
         {  
             $jwt = new config\jwt();
             $vars = json_decode($request->getBody());

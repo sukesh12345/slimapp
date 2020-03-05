@@ -233,7 +233,7 @@ var register = function () {
         // $.post('/PHP/registration.php', ,
         $.ajax({
             method: "POST",
-            url: "../../../slimapp/public/index.php/register",
+            url: "../../../slimapp/public/index.php/",
             data: datum
         }).done(function (result) {
                 response = JSON.parse(result.status);
